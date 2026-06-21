@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nusantara Epic Quest | Toer.my.id</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Quicksand:wght@400;600;700&family=Noto+Serif+Javanese&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #ffd700;
+            --dark-gold: #b8860b;
+            --bg-dark: #0a0a0c;
+            --panel-bg: rgba(15, 15, 20, 0.85);
+            --neon-blue: #00f3ff;
+        }
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--bg-dark);
+            font-family: 'Quicksand', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        h1, h2, h3, .cinzel { font-family: 'Cinzel', serif; }
+        .javanese { font-family: 'Noto Serif Javanese', serif; font-size: 1.1em; }
+
+        /* Dynamic Background Layer */
+        #bg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            filter: brightness(0.4) contrast(1.2) saturate(1.2);
+            transition: background-image 2s ease-in-out;
+            z-index: 1;
+        }
+
+        /* Canvas Engine */
+        #game-canvas { position: absolute; top: 0; left: 0; z-index: 2; }
+
+        /* UI Overlays */
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 100; display: flex; flex-direction: column;
+            pointer-events: none;
+        }
+        .interactive { pointer-events: auto; }
+
+        /* Glass Panels */
+        .glass {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 15px rgba(255, 215, 0, 0.05);
+            border-radius: 16px;
+        }
+
+        /* Buttons & Animations */
+        .btn-epic {
+            background: linear-gradient(45deg, var(--dark-gold), var(--gold));
+            color: black; font-family: 'Cinzel', serif; font-weight: bold;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+        .btn-epic:hover, .btn-epic:active {
+            transform: scale(1.05); box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+        }
+
+        .btn-option {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 215, 0, 0.3);
+            color: white; border-radius: 8px; transition: all 0.2s; text-align: left;
+        }
+        .btn-option:hover { background: rgba(255, 215, 0, 0.15); border-color: var(--gold); transform: translateX(5px); }
+
+        /* Visual Novel Dialog Box */
+        #vn-screen {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 40%;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 70%, transparent 100%);
+            display: flex; flex-direction: column; justify-content: flex-end; padding: 20px;
+            z-index: 150;
+        }
+        .character-portrait {
+            position: absolute; bottom: 100%; left: 5%;
+            width: 200px; height: 300px;
+            background-size: contain; background-repeat: no-repeat; background-position: bottom left;
+            filter: drop-shadow(0 0 15px rgba(255,215,0,0.5));
+            animation: floatChar 3s ease-in-out infinite;
+        }
+        @keyframes floatChar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        /* Joystick */
+        #joystick-zone {
+            position: absolute; bottom: 40px; left: 40px; width: 140px; height: 140px;
+            background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%; display: none; touch-action: none; z-index: 50;
+        }
+        #joystick-stick {
+            position: absolute; top: 40px; left: 40px; width: 60px; height: 60px;
+            background: radial-gradient(circle, var(--gold) 0%, var(--dark-gold) 100%);
+            border-radius: 50%; box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); pointer-events: none;
+        }
+
+        .fade-in { animation: fadeIn 0.5s forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hidden { display: none !important; }
+        
+        /* Language Tabs */
+        .lang-tab { cursor: pointer; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid gray; color: gray;}
+        .lang-tab.active { background: var(--gold); color: black; border-color: var(--gold); }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Elements -->
+    <!-- Menggunakan musik gamelan elektronik royalty free dari sumber publik -->
+    <audio id="bgm" loop preload="auto">
+        <source src="https://cdn.pixabay.com/audio/2022/10/25/audio_2760882e38.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="bg-layer"></div>
+    <canvas id="game-canvas"></canvas>
+
+    <div class="ui-layer">
+        
+        <!-- HUD -->
+        <div id="hud" class="interactive p-4 md:p-6 flex justify-between items-start hidden">
+            <div class="glass px-4 py-2 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center font-bold text-black cinzel" id="hud-avatar">B</div>
+                <div>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Penjelajah</p>
+                    <p id="hud-name" class="font-bold text-white leading-none">Bima</p>
+                </div>
+            </div>
+            <div class="glass px-6 py-2 text-right border-b-2 border-yellow-500">
+                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Skor Pengetahuan</p>
+                <p id="score-text" class="text-2xl font-black text-yellow-400 cinzel">0</p>
+            </div>
+        </div>
+
+        <div id="joystick-zone" class="interactive"><div id="joystick-stick"></div></div>
+
+        <!-- MAIN MENU -->
+        <div id="screen-menu" class="interactive flex-1 flex flex-col items-center justify-center bg-black/80 w-full h-full p-4">
+            <div class="text-center mb-10 fade-in">
+                <h2 class="text-yellow-500 font-bold tracking-widest uppercase text-sm md:text-lg mb-2">Mahakarya Media Pembelajaran IPS</h2>
+                <h1 class="cinzel text-5xl md:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 font-black mb-4 drop-shadow-[0_0_20px_rgba(255,215,0,0.5)]" style="line-height: 1.2;">
+                    NUSANTARA<br>EPIC QUEST
+                </h1>
+                <p class="text-gray-300 max-w-2xl mx-auto text-sm md:text-base">
+                    Sebuah perjalanan menembus waktu. Dari era Pra-Aksara, kejayaan Kerajaan, masa Pergerakan, hingga Indonesia Emas 2045. Uji nalar kritis dan wawasanmu sebagai Pelajar Pancasila!
+                </p>
+            </div>
+            <button onclick="showCharSelect()" class="btn-epic py-4 px-12 text-xl fade-in" style="animation-delay: 0.3s;">Mulai Ekspedisi</button>
+            <p class="text-gray-500 text-xs mt-8 absolute bottom-5">Dikembangkan oleh Guru IPS Nusantara | Toer.my.id</p>
+        </div>
+
+        <!-- CHARACTER SELECT -->
+        <div id="screen-char" class="interactive flex-1 flex flex-col items-center justify-center bg-black/90 w-full h-full p-4 hidden">
+            <h2 class="cinzel text-3xl text-yellow-400 mb-8">Pilih Pengembara</h2>
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Char 1 -->
+                <div class="glass p-6 w-64 text-center cursor-pointer hover:border-yellow-400 transition transform hover:scale-105" onclick="startGame('Bima', 'B', '#f59e0b')">
+                    <div class="w-24 h-24 mx-auto rounded-full border-2 border-yellow-500 mb-4 bg-gradient-to-br from-orange-700 to-yellow-900 flex items-center justify-center text-4xl">🥷</div>
+                    <h3 class="cinzel text-xl text-white font-bold mb-2">Bima</h3>
+                    <p class="text-xs text-gray-400">Kuat, pemberani, berjiwa ksatria. Ahli dalam sejarah dan geografi Nusantara.</p>
+                </div>
+                <!-- Char 2 -->
+                <div class="glass p-6 w-64 text-center cursor-pointer hover:border-yellow-400 transition transform hover:scale-105" onclick="startGame('Srikandi', 'S', '#10b981')">
+                    <div class="w-24 h-24 mx-auto rounded-full border-2 border-green-500 mb-4 bg-gradient-to-br from-green-700 to-teal-900 flex items-center justify-center text-4xl">🧝‍♀️</div>
+                    <h3 class="cinzel text-xl text-white font-bold mb-2">Srikandi</h3>
+                    <p class="text-xs text-gray-400">Cerdas, tangkas, bernalar kritis. Ahli dalam sosiologi dan ekonomi modern.</p>
+                </div>
+            </div>
+            <button onclick="playSound('click'); document.getElementById('screen-char').classList.add('hidden'); document.getElementById('screen-menu').classList.remove('hidden');" class="mt-8 text-gray-400 hover:text-white text-sm">⬅ Kembali</button>
+        </div>
+
+        <!-- VISUAL NOVEL DIALOG -->
+        <div id="screen-dialog" class="interactive hidden">
+            <div id="vn-screen">
+                <div class="character-portrait" id="dialog-portrait" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🗿</text></svg>');"></div>
+                
+                <div class="glass p-5 md:p-8 w-full max-w-4xl mx-auto relative border-t-4 border-yellow-500">
+                    <h3 id="dialog-name" class="cinzel text-2xl text-yellow-400 mb-1">Nama NPC</h3>
+                    <p id="dialog-role" class="text-xs text-gray-400 mb-4 uppercase tracking-widest">Peran / Era</p>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <div class="lang-tab active" onclick="switchLang('id')">ID</div>
+                        <div class="lang-tab" onclick="switchLang('jv')">JV</div>
+                        <div class="lang-tab" onclick="switchLang('en')">EN</div>
+                    </div>
+
+                    <p id="dialog-text" class="text-white text-lg md:text-xl leading-relaxed italic mb-6 min-h-[60px]"></p>
+                    
+                    <div class="text-right">
+                        <button onclick="nextDialogAction()" class="btn-epic px-8 py-2 text-sm">Lanjutkan ➔</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUIZ / QUEST MODAL -->
+        <div id="screen-quiz" class="interactive flex-1 flex items-center justify-center bg-black/90 w-full h-full hidden p-4">
+            <div class="glass p-6 md:p-10 w-full max-w-3xl relative fade-in border-2 border-yellow-600">
+                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-yellow-600 text-black px-6 py-2 rounded-full font-bold cinzel tracking-widest shadow-[0_0_15px_rgba(255,215,0,0.5)]">
+                    MISI PENGETAHUAN
+                </div>
+                
+                <h3 id="quiz-q" class="text-xl md:text-2xl text-white font-semibold mt-6 mb-4 leading-relaxed text-center">Pertanyaan?</h3>
+                
+                <div class="text-center mb-6">
+                    <button onclick="showHint()" class="text-xs bg-blue-900/50 text-blue-300 border border-blue-500 px-4 py-1 rounded-full hover:bg-blue-800 transition">💡 Butuh Petunjuk?</button>
+                    <p id="quiz-hint" class="text-sm text-yellow-300 italic mt-2 hidden p-2 bg-black/50 rounded"></p>
+                </div>
+
+                <div id="quiz-options" class="flex flex-col gap-3"></div>
+
+                <div id="quiz-feedback" class="hidden mt-6 p-5 rounded-xl border bg-black/80">
+                    <p id="feedback-title" class="font-bold text-xl mb-1 cinzel"></p>
+                    <p id="feedback-source" class="text-[10px] text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-700 pb-2"></p>
+                    <p id="feedback-desc" class="text-gray-200 text-sm leading-relaxed"></p>
+                    <button onclick="closeQuiz()" class="mt-5 btn-epic w-full py-3">KEMBALI KE PETA</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ENDING / CREDITS -->
+        <div id="screen-end" class="interactive flex-1 flex flex-col items-center justify-center bg-black w-full h-full hidden p-4 overflow-y-auto">
+            <div class="max-w-2xl w-full text-center fade-in py-10">
+                <h2 class="text-yellow-500 font-bold tracking-widest mb-2">TAMAT</h2>
+                <h1 class="cinzel text-5xl text-white mb-6">NUSANTARA TELAH BERSATU</h1>
+                
+                <div class="glass p-8 mb-8 border-yellow-500 text-center">
+                    <p class="text-gray-400 uppercase tracking-widest text-sm">Status Lulusan P5</p>
+                    <p id="final-score" class="cinzel text-6xl text-yellow-400 my-4 drop-shadow-[0_0_20px_rgba(255,215,0,0.8)]">0 XP</p>
+                    <p id="final-rank" class="text-xl font-bold text-white bg-green-600/50 inline-block px-6 py-2 rounded-full border border-green-500"></p>
+                </div>
+
+                <p id="final-msg" class="text-gray-300 mb-10 leading-relaxed italic"></p>
+
+                <div class="border-t border-gray-800 pt-8 mb-8">
+                    <h3 class="cinzel text-2xl text-yellow-500 mb-4">Credits</h3>
+                    <p class="text-sm text-gray-400 mb-2">Mahakarya Pengembangan Media Pembelajaran HTML5</p>
+                    <p class="text-lg text-white font-bold mb-6">Dikembangkan oleh: Guru IPS Nusantara</p>
+                    
+                    <div class="flex flex-col gap-4 max-w-sm mx-auto">
+                        <a href="https://toer.my.id" target="_blank" class="glass px-6 py-3 text-white hover:text-yellow-400 transition hover:border-yellow-400 flex items-center justify-center gap-2">
+                            <span>📚</span> Baca & Belajar di Toer.my.id
+                        </a>
+                        <a href="https://whatsapp.com/channel/0029Vb6R2Ny2v1J1dll5Mq27" target="_blank" class="bg-[#25D366] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#1ebe57] transition shadow-[0_0_15px_rgba(37,211,102,0.5)] flex items-center justify-center gap-2">
+                            <span>💬</span> Gabung Channel WhatsApp
+                        </a>
+                    </div>
+                </div>
+
+                <button onclick="location.reload()" class="text-gray-500 hover:text-white underline text-sm mt-8">Mainkan Ulang</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // AUDIO SYSTEM (SFX Synthesizer & BGM)
+        // ==========================================
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const bgm = document.getElementById('bgm');
+        bgm.volume = 0.3;
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'success') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now); // A4
+                osc.frequency.setValueAtTime(554.37, now + 0.1); // C#5
+                osc.frequency.setValueAtTime(659.25, now + 0.2); // E5
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.4);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            }
+        }
+
+        // ==========================================
+        // DATABASE CERITA & MATERI (Campaign Mode)
+        // ==========================================
+        // Peta dibuat vertikal. Pemain mulai dari bawah (y = 4000) menuju atas (y = 0).
+        const CAMPAIGN = [
+            {
+                id: 1,
+                era: "Era Pra-Aksara",
+                bg: "https://images.unsplash.com/photo-1516616370751-86d6bd8b0651?auto=format&fit=crop&w=1920&q=80",
+                yPos: 3500, // Posisi di peta
+                npc: {
+                    name: "Kepala Suku Purba",
+                    role: "Leluhur Austronesia",
+                    avatar: "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🗿</text></svg>",
+                    dialog: {
+                        id: "Alam ini keras, cucuku. Bertahan hidup bukan sekadar mencari makan, tapi beradaptasi dengan bentang alam vulkanik Nusantara.",
+                        jv: "Alam iki kejem, putuku. Urip ora mung golek pangan, nanging adaptasi karo alam vulkanik Nusantara.",
+                        en: "This nature is harsh, my grandchild. Survival is not just finding food, but adapting to the volcanic landscape of Nusantara."
+                    }
+                },
+                quest: {
+                    question: "Secara Geografis, Indonesia dilalui sirkum Pasifik dan Mediterania (Ring of Fire). Fakta empiris menunjukkan masyarakat kita mampu bertahan ribuan tahun. Bentuk adaptasi nalar kritis mitigasi bencana dari kearifan lokal adalah...",
+                    hint: "Pikirkan tentang struktur bangunan tradisional yang tahan guncangan.",
+                    options: [
+                        "Membangun rumah dari beton dan semen bertulang tebal.",
+                        "Membangun rumah panggung berbahan kayu/bambu dengan sambungan pasak yang fleksibel saat gempa.",
+                        "Berpindah-pindah pulau setiap tahun menghindari gunung meletus.",
+                        "Menolak membangun rumah dan tinggal di ruang terbuka saja."
+                    ],
+                    correct: 1,
+                    explanation: "Kearifan lokal (seperti Rumah Gadang atau Omo Hada) menggunakan pasak kayu tanpa paku, membuatnya lentur dan tahan gempa. Ini bukti Nalar Kritis leluhur dalam Ilmu Geografi dan Mitigasi.",
+                    source: "Data BNPB & Jurnal Arsitektur Vernakular Indonesia."
+                }
+            },
+            {
+                id: 2,
+                era: "Era Kerajaan Nusantara",
+                bg: "https://images.unsplash.com/photo-1518002054494-3a6f94352e9d?auto=format&fit=crop&w=1920&q=80",
+                yPos: 2500,
+                npc: {
+                    name: "Mahapatih",
+                    role: "Simbol Pemersatu Nusantara",
+                    avatar: "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🛕</text></svg>",
+                    dialog: {
+                        id: "Aku telah bersumpah tidak akan menikmati kemewahan sebelum pulau-pulau di Nusantara bersatu. Bagaimana caramu menjaga persatuan ini, anak muda?",
+                        jv: "Aku wis sumpah ora bakal ngrasakake kamulyan sadurunge Nusantara nyawiji. Piye caramu njaga persatuan iki, cah bagus?",
+                        en: "I have sworn not to taste luxury until the islands of Nusantara are united. How will you maintain this unity, young one?"
+                    }
+                },
+                quest: {
+                    question: "Sumpah Palapa adalah tonggak sejarah integrasi bangsa. Saat ini, Sosiologi mencatat fenomena intoleransi sering muncul di media sosial. Sesuai Profil Pelajar Pancasila, solusi paling tepat adalah...",
+                    hint: "Intoleransi muncul karena kurangnya pemahaman tentang keberagaman.",
+                    options: [
+                        "Membatasi akses internet agar masyarakat tidak saling berdebat.",
+                        "Mengembangkan sikap 'Berkebinekaan Global' dengan menghargai perbedaan budaya, agama, dan pandangan.",
+                        "Memaksa seluruh warga negara untuk memiliki satu budaya yang sama (asimilasi paksa).",
+                        "Menghindari pergaulan dengan orang yang berbeda suku."
+                    ],
+                    correct: 1,
+                    explanation: "Berkebinekaan Global berarti mempertahankan budaya luhur, namun tetap berpikiran terbuka dan toleran terhadap perbedaan, merepresentasikan semboyan Bhinneka Tunggal Ika.",
+                    source: "Buku Teks Sosiologi Kemdikbud & Konsep Profil Pelajar Pancasila."
+                }
+            },
+            {
+                id: 3,
+                era: "Era Pergerakan & Kemerdekaan",
+                bg: "https://images.unsplash.com/photo-1574512964893-611fbbe7eb89?auto=format&fit=crop&w=1920&q=80", // Batavia/Old city style
+                yPos: 1500,
+                npc: {
+                    name: "Tokoh Pers & Pergerakan",
+                    role: "Bapak Jurnalisme Nasional",
+                    avatar: "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>📰</text></svg>",
+                    dialog: {
+                        id: "Pena lebih tajam dari pedang! Kami melawan kolonialisme melalui tulisan dan kesadaran politik. Gunakan literasimu untuk memerdekakan rakyat dari kebodohan!",
+                        jv: "Pena luwih landhep tinimbang pedhang! Kita nglawan penjajah liwat tulisan. Gunakake literasimu kanggo mardikakake rakyat saka kebodohan!",
+                        en: "The pen is mightier than the sword! We fight colonialism through writing and political awareness. Use your literacy to free the people from ignorance!"
+                    }
+                },
+                quest: {
+                    question: "Pada masa penjajahan, sistem Tanam Paksa (Cultuurstelsel) mengeksploitasi ekonomi rakyat. Di era modern, eksploitasi ekonomi beralih bentuk menjadi... dan kita harus bersikap Mandiri dengan cara...",
+                    hint: "Pikirkan tentang gaya hidup konsumtif karena pinjaman instan di era digital.",
+                    options: [
+                        "Monopoli perdagangan rempah; Kita harus kembali menanam rempah di halaman.",
+                        "Penipuan investasi bodong dan pinjaman online (Pinjol) ilegal; Kita harus meningkatkan Literasi Finansial dan hidup sesuai kemampuan.",
+                        "Pajak tanah yang tinggi; Kita harus menolak membayar pajak kepada negara.",
+                        "Kerja rodi membangun jalan tol; Kita harus berhenti menggunakan fasilitas umum."
+                    ],
+                    correct: 1,
+                    explanation: "Penjajahan ekonomi modern sering berbentuk jeratan hutang konsumtif (Pinjol Ilegal). Literasi finansial adalah bentuk kemandirian ekonomi siswa (Profil Mandiri).",
+                    source: "Data OJK (Otoritas Jasa Keuangan) terkait literasi keuangan generasi muda."
+                }
+            },
+            {
+                id: 4,
+                era: "Indonesia Emas 2045",
+                bg: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1920&q=80", // Modern city
+                yPos: 500,
+                npc: {
+                    name: "Teknolog Masa Depan",
+                    role: "Arsitek Nusantara Baru",
+                    avatar: "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🚀</text></svg>",
+                    dialog: {
+                        id: "Selamat datang di era Bonus Demografi, di mana pemuda sepertimu memegang kendali ekonomi digital. Jadilah penggerak yang kreatif, bukan sekadar konsumen pasar global!",
+                        jv: "Sugeng rawuh ing era Bonus Demografi, ing endi pemuda kaya kowe sing nyekel kendhali ekonomi digital. Dadiya penggerak sing kreatif!",
+                        en: "Welcome to the Demographic Dividend era, where youth like you control the digital economy. Be a creative driver, not just a consumer in the global market!"
+                    }
+                },
+                quest: {
+                    question: "Berdasarkan data BPS, Indonesia menikmati 'Bonus Demografi' puncaknya hingga tahun 2030 (penduduk usia produktif melimpah). Secara Ekonomi dan Sosiologi, apa bahaya terbesar jika pemuda tidak memiliki keahlian (skill) dan karakter Bergotong Royong?",
+                    hint: "Jika banyak orang usia kerja tapi tidak ada pekerjaan, apa yang terjadi pada masyarakat?",
+                    options: [
+                        "Negara akan semakin kaya karena banyak yang membayar pajak secara otomatis.",
+                        "Terjadinya ledakan pengangguran terdidik, meningkatnya angka kriminalitas, dan ketimpangan sosial yang parah.",
+                        "Pemerintah akan mudah memenangkan pemilihan umum.",
+                        "Terjadinya penurunan populasi secara drastis."
+                    ],
+                    correct: 1,
+                    explanation: "Bonus demografi adalah pisau bermata dua. Jika usia produktif berkualitas (Kreatif, Mandiri), ekonomi maju. Jika tidak kompeten, akan terjadi bencana sosial (pengangguran & kriminalitas).",
+                    source: "Laporan Badan Pusat Statistik (BPS) & Bappenas tentang Visi Indonesia Emas 2045."
+                }
+            }
+        ];
+
+        // ==========================================
+        // GAME ENGINE STATE & VARS
+        // ==========================================
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const bgLayer = document.getElementById('bg-layer');
+        
+        let state = 'MENU'; // MENU, CHAR_SELECT, PLAY, DIALOG, QUIZ, END
+        let playerObj = { name: '', avatarIcon: '', color: '', x: 0, y: 0, radius: 18, speed: 6, vx: 0, vy: 0, score: 0 };
+        const WORLD_W = 2000;
+        const WORLD_H = 4500; // Peta vertikal panjang
+        let camera = { x: 0, y: 0 };
+        let currentEraIndex = 0;
+        let activeNode = null;
+        let activeDialogLang = 'id';
+
+        // Partikel (Untuk efek dopamine / pergerakan)
+        let particles = [];
+        function createParticles(x, y, color, count) {
+            for(let i=0; i<count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+                    life: 1, color: color
+                });
+            }
+        }
+        function updateDrawParticles(camX, camY) {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+                if(p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x - camX, p.y - camY, 3, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // ==========================================
+        // INPUT CONTROLS
+        // ==========================================
+        const keys = { w:false, a:false, s:false, d:false };
+        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
+
+        // Virtual Joystick
+        const joyZone = document.getElementById('joystick-zone');
+        const joyStick = document.getElementById('joystick-stick');
+        let joyActive = false, joyCenter = {x:0, y:0}, joyVec = {x:0, y:0};
+
+        function handleTouchMove(e) {
+            if(!joyActive) return;
+            e.preventDefault();
+            let touch = e.touches[0];
+            let dx = touch.clientX - joyCenter.x;
+            let dy = touch.clientY - joyCenter.y;
+            let max = 40; let dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist > max) { dx = (dx/dist)*max; dy = (dy/dist)*max; }
+            joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+            joyVec.x = dx / max; joyVec.y = dy / max;
+        }
+        joyZone.addEventListener('touchstart', e => {
+            e.preventDefault(); joyActive = true;
+            let rect = joyZone.getBoundingClientRect();
+            joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+            handleTouchMove(e);
+        });
+        joyZone.addEventListener('touchmove', handleTouchMove);
+        const endJoy = (e) => { e.preventDefault(); joyActive = false; joyVec = {x:0, y:0}; joyStick.style.transform = `translate(0px, 0px)`; };
+        joyZone.addEventListener('touchend', endJoy); joyZone.addEventListener('touchcancel', endJoy);
+
+        // ==========================================
+        // MAIN LOGIC
+        // ==========================================
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        function showCharSelect() {
+            playSound('click');
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            bgm.play().catch(e => console.log("Audio autoplay blocked. Need interaction."));
+            document.getElementById('screen-menu').classList.add('hidden');
+            document.getElementById('screen-char').classList.remove('hidden');
+        }
+
+        function startGame(name, icon, color) {
+            playSound('success');
+            playerObj.name = name; playerObj.avatarIcon = icon; playerObj.color = color;
+            playerObj.x = WORLD_W / 2; 
+            playerObj.y = 4000; // Start at the bottom
+            playerObj.score = 0;
+            currentEraIndex = 0;
+
+            // Reset nodes
+            CAMPAIGN.forEach(n => { n.solved = false; n.x = WORLD_W/2; n.pulse = Math.random()*10; });
+
+            document.getElementById('screen-char').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            if(window.innerWidth <= 1024 || 'ontouchstart' in window) joyZone.style.display = 'block';
+            
+            document.getElementById('hud-avatar').innerText = icon;
+            document.getElementById('hud-name').innerText = name;
+            updateHUD();
+
+            state = 'PLAY';
+            updateEnvironment();
+        }
+
+        function updateEnvironment() {
+            let activeEra = CAMPAIGN[currentEraIndex];
+            if(activeEra) {
+                bgLayer.style.backgroundImage = `url('${activeEra.bg}')`;
+            }
+        }
+
+        function updatePlayer() {
+            if(state !== 'PLAY') return;
+
+            let dx = 0, dy = 0;
+            if(keys.w) dy -= 1; if(keys.s) dy += 1; if(keys.a) dx -= 1; if(keys.d) dx += 1;
+            if(joyActive) { dx = joyVec.x; dy = joyVec.y; }
+
+            let len = Math.sqrt(dx*dx + dy*dy);
+            if(len > 0) {
+                playerObj.vx = (dx / len) * playerObj.speed * (joyActive ? len : 1);
+                playerObj.vy = (dy / len) * playerObj.speed * (joyActive ? len : 1);
+                // Gerak lari buat partikel
+                if(Math.random() < 0.2) createParticles(playerObj.x, playerObj.y + 10, 'rgba(255,255,255,0.3)', 1);
+            } else {
+                playerObj.vx *= 0.8; playerObj.vy *= 0.8;
+            }
+
+            playerObj.x += playerObj.vx; playerObj.y += playerObj.vy;
+            
+            // Batas
+            if(playerObj.x < 50) playerObj.x = 50; if(playerObj.x > WORLD_W - 50) playerObj.x = WORLD_W - 50;
+            if(playerObj.y < 50) playerObj.y = 50; if(playerObj.y > WORLD_H - 50) playerObj.y = WORLD_H - 50;
+
+            // Collision dgn Node
+            let node = CAMPAIGN[currentEraIndex];
+            if(node && !node.solved) {
+                let ddist = Math.sqrt(Math.pow(playerObj.x - node.x, 2) + Math.pow(playerObj.y - node.yPos, 2));
+                if(ddist < playerObj.radius + 40) {
+                    triggerDialog(node);
+                }
+            }
+        }
+
+        function drawWorld() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(state !== 'PLAY') return;
+
+            // Camera follow (di tengah)
+            camera.x = playerObj.x - canvas.width / 2;
+            camera.y = playerObj.y - canvas.height / 2;
+
+            // Draw Paths/Roads
+            ctx.strokeStyle = "rgba(255, 215, 0, 0.2)";
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(WORLD_W/2 - camera.x, 4200 - camera.y);
+            ctx.lineTo(WORLD_W/2 - camera.x, 200 - camera.y);
+            ctx.stroke();
+
+            // Draw Current Node
+            let node = CAMPAIGN[currentEraIndex];
+            if(node) {
+                let drawX = node.x - camera.x;
+                let drawY = node.yPos - camera.y;
+                
+                if(drawY > -100 && drawY < canvas.height + 100) {
+                    node.pulse += 0.05;
+                    let scale = node.solved ? 1 : 1 + Math.sin(node.pulse)*0.1;
+                    
+                    ctx.save(); ctx.translate(drawX, drawY); ctx.scale(scale, scale);
+                    
+                    // Aura NPC
+                    ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2);
+                    ctx.fillStyle = node.solved ? "rgba(16, 185, 129, 0.4)" : "rgba(255, 215, 0, 0.4)";
+                    ctx.shadowBlur = 20; ctx.shadowColor = node.solved ? "#10b981" : "#ffd700"; ctx.fill();
+                    
+                    // Simbol Era
+                    ctx.fillStyle = "#fff"; ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText(!node.solved ? "❗" : "✅", 0, -10);
+
+                    ctx.fillStyle = "white"; ctx.font = "bold 14px Quicksand";
+                    ctx.fillText(node.era, 0, 40);
+
+                    ctx.restore();
+                }
+            }
+
+            // Draw Player
+            let px = playerObj.x - camera.x; let py = playerObj.y - camera.y;
+            ctx.beginPath(); ctx.arc(px, py, playerObj.radius, 0, Math.PI*2);
+            ctx.fillStyle = playerObj.color; ctx.shadowBlur = 15; ctx.shadowColor = playerObj.color; ctx.fill();
+            ctx.strokeStyle = "white"; ctx.lineWidth=2; ctx.stroke();
+
+            updateDrawParticles(camera.x, camera.y);
+        }
+
+        function gameLoop() {
+            updatePlayer();
+            drawWorld();
+            requestAnimationFrame(gameLoop);
+        }
+        requestAnimationFrame(gameLoop);
+
+        // ==========================================
+        // UI TRANSACTIONS
+        // ==========================================
+        function updateHUD() {
+            document.getElementById('score-text').innerText = playerObj.score;
+        }
+
+        // --- DIALOG ---
+        function triggerDialog(node) {
+            state = 'DIALOG';
+            activeNode = node;
+            joyVec = {x:0, y:0}; playerObj.vx = 0; playerObj.vy = 0; // Stop player
+            playerObj.y += 50; // Pentalin sedikit
+            
+            document.getElementById('screen-dialog').classList.remove('hidden');
+            document.getElementById('dialog-portrait').style.backgroundImage = `url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2280%22>🗿</text></svg>')`; // Simplified portrait handling
+            document.getElementById('dialog-name').innerText = node.npc.name;
+            document.getElementById('dialog-role').innerText = node.npc.role + " | " + node.era;
+            
+            switchLang('id'); // Default ID
+        }
+
+        function switchLang(lang) {
+            playSound('click');
+            activeDialogLang = lang;
+            document.querySelectorAll('.lang-tab').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.lang-tab[onclick="switchLang('${lang}')"]`).classList.add('active');
+            
+            let textEl = document.getElementById('dialog-text');
+            textEl.classList.remove('javanese');
+            if(lang === 'jv') textEl.classList.add('javanese');
+            
+            textEl.innerText = `"${activeNode.npc.dialog[lang]}"`;
+        }
+
+        function nextDialogAction() {
+            playSound('click');
+            document.getElementById('screen-dialog').classList.add('hidden');
+            triggerQuiz(activeNode);
+        }
+
+        // --- QUIZ ---
+        function triggerQuiz(node) {
+            state = 'QUIZ';
+            document.getElementById('screen-quiz').classList.remove('hidden');
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            document.getElementById('quiz-hint').classList.add('hidden');
+            
+            document.getElementById('quiz-q').innerText = node.quest.question;
+            document.getElementById('quiz-hint').innerText = node.quest.hint;
+
+            const optsDiv = document.getElementById('quiz-options');
+            optsDiv.innerHTML = '';
+            node.quest.options.forEach((opt, idx) => {
+                let btn = document.createElement('button');
+                btn.className = "btn-option p-4 flex items-center gap-4";
+                btn.innerHTML = `<span class="bg-yellow-500 text-black font-bold w-8 h-8 rounded-full flex items-center justify-center shrink-0 cinzel">${String.fromCharCode(65+idx)}</span> <span>${opt}</span>`;
+                btn.onclick = () => answerQuiz(idx, btn);
+                optsDiv.appendChild(btn);
+            });
+        }
+
+        function showHint() {
+            playSound('click');
+            document.getElementById('quiz-hint').classList.remove('hidden');
+            playerObj.score -= 10; // Penalty kecil
+            updateHUD();
+        }
+
+        function answerQuiz(selectedIdx, btnEl) {
+            let opts = document.querySelectorAll('.btn-option');
+            opts.forEach(b => { b.style.pointerEvents = 'none'; b.style.opacity = '0.5'; });
+            btnEl.style.opacity = '1';
+
+            let feedBox = document.getElementById('quiz-feedback');
+            let fTitle = document.getElementById('feedback-title');
+            
+            if(selectedIdx === activeNode.quest.correct) {
+                playSound('success');
+                btnEl.style.background = "rgba(16, 185, 129, 0.3)"; btnEl.style.borderColor = "#10b981";
+                fTitle.innerText = "✨ NALAR KRITIS LUAR BIASA (+100 XP)"; fTitle.className = "font-bold text-xl mb-1 cinzel text-green-400";
+                playerObj.score += 100;
+                activeNode.solved = true;
+                createParticles(playerObj.x, playerObj.y, '#ffd700', 30);
+            } else {
+                playSound('fail');
+                btnEl.style.background = "rgba(239, 68, 68, 0.3)"; btnEl.style.borderColor = "#ef4444";
+                opts[activeNode.quest.correct].style.opacity = '1'; opts[activeNode.quest.correct].style.borderColor = "#10b981";
+                fTitle.innerText = "⚠️ PERLU ANALISIS LEBIH DALAM"; fTitle.className = "font-bold text-xl mb-1 cinzel text-red-400";
+                // Tetap solve agar bisa lanjut jalan
+                activeNode.solved = true;
+            }
+
+            document.getElementById('feedback-source').innerText = "Sumber Valid: " + activeNode.quest.source;
+            document.getElementById('feedback-desc').innerText = activeNode.quest.explanation;
+            feedBox.classList.remove('hidden');
+            updateHUD();
+        }
+
+        function closeQuiz() {
+            playSound('click');
+            document.getElementById('screen-quiz').classList.add('hidden');
+            currentEraIndex++;
+            
+            if(currentEraIndex >= CAMPAIGN.length) {
+                showEnding();
+            } else {
+                state = 'PLAY';
+                updateEnvironment();
+            }
+        }
+
+        // --- ENDING ---
+        function showEnding() {
+            state = 'END';
+            joyZone.style.display = 'none';
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('screen-end').classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = playerObj.score + " XP";
+            
+            let rank = "", msg = "";
+            let maxScore = CAMPAIGN.length * 100;
+            if(playerObj.score >= maxScore * 0.9) {
+                rank = "PANCASILA SCHOLAR 🎓";
+                msg = "Sempurna! Anda memiliki wawasan empiris dan nalar kritis yang tajam menyikapi sejarah dan realitas sosial modern.";
+                playSound('success'); setTimeout(()=>playSound('success'), 500);
+            } else {
+                rank = "PENJELAJAH TANGGUH 🧭";
+                msg = "Perjalanan yang hebat! Mari tingkatkan terus literasi kita untuk menyongsong Indonesia Emas.";
+                playSound('success');
+            }
+            
+            document.getElementById('final-rank').innerText = rank;
+            document.getElementById('final-msg').innerText = msg;
+        }
+
+    </script>
+</body>
+</html>
